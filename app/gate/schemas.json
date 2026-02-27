@@ -1,13 +1,13 @@
 {
-    "healthz": {
+    "/healthz": {
         "method":["GET"],
         "body": {}
     },
-    "readyz": {
+    "/readyz": {
         "method":"GET",
         "body": {}
     },
-    "v1/auth/login": {
+    "/v1/auth/login": {
         "method": ["POST"],
         "body": {
             "login": "^[a-zA-Z0-9_.@-]+$",
