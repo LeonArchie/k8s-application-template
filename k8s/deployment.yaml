@@ -1,24 +1,24 @@
 apiVersion: apps/v1        # Версия API для работы с Deployments
 kind: Deployment           # Тип ресурса Kubernetes - Deployment
 metadata:
-  name: flask-app          # Имя деплоймента в кластере
+  name: application-template          # Имя деплоймента в кластере
   labels:
-    app: flask-app         # Метка для идентификации ресурса
+    app: application-template         # Метка для идентификации ресурса
 spec:
   replicas: 1              # Количество реплик (pod'ов) для запуска
   selector:
     matchLabels:
-      app: flask-app       # Селектор для управления pod'ами с этой меткой
+      app: application-template       # Селектор для управления pod'ами с этой меткой
   template:                # Шаблон для создания pod'ов
     metadata:
       labels:
-        app: flask-app     # Метка, которая будет у создаваемых pod'ов
+        app: application-template     # Метка, которая будет у создаваемых pod'ов
         version: "0.0"
     spec:
       imagePullSecrets:
       - name: ghcr-secret
       containers:
-      - name: flask-app    # Имя контейнера внутри pod'а
+      - name: application-template    # Имя контейнера внутри pod'а
         image: "{{IMAGE_NAME}}"  # Используемый Docker образ
         ports:
         - containerPort: 9443  # Порт, который открывает контейнер
