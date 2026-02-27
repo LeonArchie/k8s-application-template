@@ -1,10 +1,10 @@
 apiVersion: v1             # Версия API для работы с Services
 kind: Service              # Тип ресурса Kubernetes - Service
 metadata:
-  name: flask-app-service  # Имя сервиса в кластере
+  name: application-template-service  # Имя сервиса в кластере
 spec:
   selector:
-    app: flask-app         # Селектор для pod'ов, которые будут частью сервиса
+    app: application-template         # Селектор для pod'ов, которые будут частью сервиса
   ports:
     - protocol: TCP        # Протокол для работы сервиса
       port: 9443             # Порт, на котором сервис будет доступен внутри кластера
