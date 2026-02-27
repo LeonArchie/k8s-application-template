@@ -3,7 +3,7 @@
 
 from flask import Flask
 import threading
-
+from gate.gate import init_gate
 from maintenance.logging_config import setup_logging
 from maintenance.config_read import get_config_reader 
 from maintenance.database_connector import initialize_database
@@ -25,6 +25,9 @@ def create_app():
     @app.after_request
     def after_request(response):
         return log_request_response(response)
+    # ИНИЦИАЛИЗАЦИЯ ШЛЮЗА - ДОЛЖНА БЫТЬ ДО ВСЕХ ДРУГИХ КОМПОНЕНТОВ
+    # Чтобы перехватывает запросы до их обработки   
+    init_gate(app)
     
     # Инициализация компонентов приложения
     initialize_components()
