@@ -51,8 +51,7 @@ def with_db_session(func: Callable) -> Callable:
 def _log_migration_step(step: str, details: str = "", level: str = "info") -> None:
     """Унифицированное логирование шагов миграции"""
     log_method = getattr(logger, level.lower(), logger.info)
-    border = "=" * 40
-    log_method(f"\n{border}\nМИГРАЦИЯ: {step}\n{details}\n{border}")
+    log_method(f"МИГРАЦИЯ: {step} {details}")
 
 def _get_pending_migrations(applied: Dict, all_files: set) -> List[str]:
     """Получить список ожидающих миграций (не примененные или с ошибками)"""

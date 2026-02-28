@@ -136,8 +136,7 @@ class DatabaseConnector:
     def _log_db_operation(self, operation: str, details: str = "", level: str = "info") -> None:
         """Унифицированное логирование операций с БД."""
         log_method = getattr(logger, level.lower(), logger.info)
-        border = "=" * 60
-        log_method(f"\n{border}\nOPERATION: {operation}\n{details}\n{border}")
+        log_method(f"ЗАПРОС БД: {operation} {details}")
     
     def _get_config_param_with_retry(self, file_name: str, param_path: str, max_retries: int = 10, retry_delay: float = 5.0) -> Any:
         """
