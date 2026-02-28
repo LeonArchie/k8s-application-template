@@ -5,12 +5,13 @@
 import logging  # Стандартный модуль логирования Python
 import json     # Для форматирования логов в JSON
 import sys      # Для работы с системными потоками ввода/вывода
-from datetime import datetime  # Для временных меток
+import os       # Для работы с файловой системой
+from datetime import datetime, timezone  # Для временных меток
+from typing import Optional
 
 class StructuredFormatter(logging.Formatter):
     """
     Кастомный форматтер для структурированных логов в формате JSON.
-    Наследуется от базового класса logging.Formatter.
     """
     def format(self, record):
         """
@@ -21,13 +22,9 @@ class StructuredFormatter(logging.Formatter):
         """
         # Базовая структура лога
         log_data = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",  # Время в UTC в ISO-формате
+            "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),  # Время в UTC в ISO-формате
             "level": record.levelname,      # Уровень логирования (INFO, WARNING и т.д.)
             "message": record.getMessage(),  # Текст сообщения
-            "logger": record.name,           # Имя логгера
-            "module": record.module,         # Имя модуля
-            "function": record.funcName,     # Имя функции
-            "line": record.lineno,           # Номер строки
         }
         
         # Если есть информация об исключении, добавляем её в лог
@@ -37,17 +34,78 @@ class StructuredFormatter(logging.Formatter):
         # Сериализуем в JSON с поддержкой Unicode (ensure_ascii=False)
         return json.dumps(log_data, ensure_ascii=False)
 
-def setup_logging():
+def read_log_level_from_config(config_file_path: Optional[str] = None) -> str:
+    """
+    Чтение уровня логирования из файла global.conf
+    
+    :param config_file_path: путь к файлу global.conf (опционально)
+    :return: уровень логирования из конфигурации или значение по умолчанию "INFO"
+    """
+    if config_file_path is None:
+        # Определяем путь к файлу global.conf относительно текущего файла
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_file_path = os.path.join(base_dir, "global.conf")
+    
+    default_level = "INFO"
+    
+    try:
+        if not os.path.exists(config_file_path):
+            print(f"Предупреждение: Файл конфигурации не найден: {config_file_path}. Используется уровень по умолчанию: {default_level}")
+            return default_level
+        
+        with open(config_file_path, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                
+                # Пропускаем комментарии и пустые строки
+                if not line or line.startswith('#'):
+                    continue
+                
+                if line.startswith('LOG_LVL='):
+                    log_level = line.split('=', 1)[1].strip()
+                    
+                    # ИСПРАВЛЕНО: Добавлена проверка валидности уровня
+                    valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+                    if log_level in valid_levels:
+                        return log_level
+                    else:
+                        print(f"Предупреждение: Неизвестный уровень логирования '{log_level}'. Используется уровень по умолчанию: {default_level}")
+                        return default_level
+        
+        # Если дошли до сюда, значит LOG_LVL не найден в файле
+        print(f"Информация: LOG_LVL не найден в конфигурации. Используется уровень по умолчанию: {default_level}")
+        return default_level
+        
+    except Exception as e:
+        print(f"Ошибка при чтении уровня логирования из конфигурации: {e}. Используется уровень по умолчанию: {default_level}")
+        return default_level
+
+def setup_logging(config_file_path: Optional[str] = None):
     """
     Настройка системы логирования для приложения.
     
+    :param config_file_path: путь к файлу global.conf (опционально)
     :return: Настроенный root-логгер
     """
     # Получаем root-логгер
     logger = logging.getLogger()
     
-    # Устанавливаем уровень логирования (INFO включает INFO, WARNING, ERROR, CRITICAL)
-    logger.setLevel(logging.INFO)
+    # Читаем уровень логирования из конфигурационного файла
+    log_level_str = read_log_level_from_config(config_file_path)
+    
+    # Преобразуем строковый уровень в константу logging
+    log_level_map = {
+        'DEBUG': logging.DEBUG,
+        'INFO': logging.INFO,
+        'WARNING': logging.WARNING,
+        'ERROR': logging.ERROR,
+        'CRITICAL': logging.CRITICAL
+    }
+    
+    log_level = log_level_map.get(log_level_str, logging.INFO)
+    
+    # Устанавливаем уровень логирования из конфигурации
+    logger.setLevel(log_level)
     
     # Создаем обработчик, который выводит логи в stdout
     # (рекомендуется для Docker/Kubernetes)
@@ -63,40 +121,7 @@ def setup_logging():
     
     # Добавляем наш обработчик к root-логгеру
     logger.addHandler(handler)
-
+    
+    # Логируем успешную настройку логирования
+    logger.debug(f"Система логирования настроена. Уровень: {log_level_str}")
     return logger
-
-# Основные принципы работы:
-#
-# 1. Преимущества структурированных логов:
-#    - Легко парсятся системами сбора логов (ELK, Loki, Splunk)
-#    - Позволяют делать сложные фильтрации и агрегации
-#    - Сохраняют контекст событий
-#
-# 2. Формат вывода:
-#    {
-#      "timestamp": "2023-10-05T14:32:15.123456Z",
-#      "level": "INFO",
-#      "message": "Сервис запущен",
-#      "logger": "app",
-#      "module": "app",
-#      "function": "main",
-#      "line": 42,
-#      "exception": "..."
-#    }
-#
-# 3. Рекомендации по использованию:
-#    - В production можно добавить дополнительные поля:
-#      * "service": имя сервиса
-#      * "version": версия приложения
-#      * "environment": окружение (prod, stage, dev)
-#    - Для Kubernetes можно добавить поля Pod/Deployment
-#
-# 4. Производительность:
-#    - Форматирование в JSON добавляет небольшие накладные расходы
-#    - Вывод в stdout не блокирует основной поток
-#
-# 5. Интеграция:
-#    - Совместим с Docker (логи выводятся в stdout)
-#    - Работает с Kubernetes-логированием
-#    - Поддерживается всеми основными системами мониторинга

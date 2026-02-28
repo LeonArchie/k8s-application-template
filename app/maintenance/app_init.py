@@ -1,14 +1,18 @@
 # SPDX-License-Identifier: AGPL-3.0-only WITH LICENSE-ADDITIONAL
 # Copyright (C) 2025 Петунин Лев Михайлович
 
-from flask import Flask
 import threading
-from gate.gate import init_gate
+from flask import Flask
+
+from handlers.gate import init_gate 
+from handlers.module_id_injector import ModuleIDInjector
+from handlers.rqid_injector import RQIDInjector
+from handlers.incoming_logger import IncomingRequestLogger
+from handlers.outgoing_logger import OutgoingRequestLogger
 from maintenance.logging_config import setup_logging
 from maintenance.config_read import get_config_reader 
 from maintenance.database_connector import initialize_database
 from maintenance.migration import run_migrations
-from maintenance.request_logging import log_request_info, log_request_response
 from maintenance.app_blueprint import register_blueprints, register_error_handlers
 
 logger = setup_logging()
@@ -17,14 +21,14 @@ def create_app():
     """Создание и инициализация Flask приложения"""
     app = Flask(__name__)
     
-    # Настройка middleware
-    @app.before_request
-    def before_request():
-        log_request_info()
-
-    @app.after_request
-    def after_request(response):
-        return log_request_response(response)
+    # Инициализация логгеров
+    incoming_logger = IncomingRequestLogger(app)
+    outgoing_logger = OutgoingRequestLogger()
+    
+    # Сохраняем логгеры в конфигурации приложения для доступа из других модулей
+    app.config['INCOMING_LOGGER'] = incoming_logger
+    app.config['OUTGOING_LOGGER'] = outgoing_logger
+    
     # ИНИЦИАЛИЗАЦИЯ ШЛЮЗА - ДОЛЖНА БЫТЬ ДО ВСЕХ ДРУГИХ КОМПОНЕНТОВ
     # Чтобы перехватывает запросы до их обработки   
     init_gate(app)
